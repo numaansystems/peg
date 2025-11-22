@@ -1,0 +1,23 @@
+# Local development profile configuration
+# Use this profile for local testing without Azure AD
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          azure:
+            client-id: local-client-id
+            client-secret: local-client-secret
+        provider:
+          azure:
+            issuer-uri: https://login.microsoftonline.com/common/v2.0
+
+# Override backend URLs for local development
+backend:
+  spring-boot-url: http://localhost:8081
+  legacy-spring-url: http://localhost:8082
+  gwt-url: http://localhost:8083
+
+logging:
+  level:
+    com.numaansystems.peg: TRACE

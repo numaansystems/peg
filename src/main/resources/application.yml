@@ -1,0 +1,100 @@
+spring:
+  application:
+    name: peg-gateway
+  
+  # Azure AD OAuth2 configuration
+  cloud:
+    azure:
+      active-directory:
+        enabled: true
+        profile:
+          tenant-id: ${AZURE_TENANT_ID:your-tenant-id}
+        credential:
+          client-id: ${AZURE_CLIENT_ID:your-client-id}
+          client-secret: ${AZURE_CLIENT_SECRET:your-client-secret}
+        authorization-clients:
+          graph:
+            scopes: openid, profile, email, User.Read
+    
+    # Gateway routes configuration
+    gateway:
+      routes:
+        # Modern Spring Boot application route
+        - id: spring-boot-app
+          uri: ${BACKEND_SPRING_BOOT_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/**
+          filters:
+            - StripPrefix=1
+            - PreserveHostHeader
+            - AuthenticationHeaderFilter
+        
+        # Legacy Spring Framework application route
+        - id: legacy-spring-app
+          uri: ${BACKEND_LEGACY_SPRING_URL:http://localhost:8082}
+          predicates:
+            - Path=/legacy/**
+          filters:
+            - StripPrefix=1
+            - PreserveHostHeader
+            - AuthenticationHeaderFilter
+        
+        # GWT application route
+        - id: gwt-app
+          uri: ${BACKEND_GWT_URL:http://localhost:8083}
+          predicates:
+            - Path=/gwt/**
+          filters:
+            - StripPrefix=1
+            - PreserveHostHeader
+            - AuthenticationHeaderFilter
+      
+      # Global CORS configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+  # Security OAuth2 client configuration
+  security:
+    oauth2:
+      client:
+        registration:
+          azure:
+            client-id: ${AZURE_CLIENT_ID:your-client-id}
+            client-secret: ${AZURE_CLIENT_SECRET:your-client-secret}
+            scope: openid, profile, email
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          azure:
+            issuer-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID:your-tenant-id}/v2.0
+
+# Server configuration
+server:
+  port: ${SERVER_PORT:8080}
+  
+# Actuator configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.numaansystems.peg: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.security: DEBUG
