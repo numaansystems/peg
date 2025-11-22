@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Spring Boot Test App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .info-section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #bdc3c7;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: bold;
+            color: #34495e;
+        }
+        .value {
+            color: #27ae60;
+            font-family: monospace;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #3498db;
+            color: white;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .warning {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <span th:text="${appName}">Application Name</span>
+            <span class="badge" th:text="'Port: ' + ${appPort}">Port</span>
+        </h1>
+        
+        <div class="info-section">
+            <h2>Authentication Status</h2>
+            <div class="info-row">
+                <span class="label">Status:</span>
+                <span th:if="${userName != 'Not authenticated'}" class="value success">✓ Authenticated via Gateway</span>
+                <span th:if="${userName == 'Not authenticated'}" class="value warning">✗ Not Authenticated</span>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>User Information</h2>
+            <p><em>This information is passed from the PEG Gateway via HTTP headers</em></p>
+            
+            <div class="info-row">
+                <span class="label">User Name:</span>
+                <span class="value" th:text="${userName}">N/A</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">User Email:</span>
+                <span class="value" th:text="${userEmail}">N/A</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">User Subject (ID):</span>
+                <span class="value" th:text="${userSub}">N/A</span>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>How It Works</h2>
+            <ol>
+                <li>User authenticates with Azure AD via the PEG Gateway</li>
+                <li>Gateway adds authentication headers to all proxied requests</li>
+                <li>This backend application reads those headers to identify the user</li>
+                <li>No OAuth2 implementation needed in this backend!</li>
+            </ol>
+        </div>
+        
+        <div class="info-section">
+            <h2>API Endpoints</h2>
+            <ul>
+                <li><code>GET /</code> - This page (HTML)</li>
+                <li><code>GET /api/user</code> - User info (JSON)</li>
+                <li><code>GET /health</code> - Health check (JSON)</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

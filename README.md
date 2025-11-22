@@ -124,6 +124,38 @@ Run tests:
 mvn test
 ```
 
+### Test Applications
+
+The repository includes two test applications to validate the gateway functionality:
+
+1. **Spring Boot Test App** (Port 8081)
+   - Modern Spring Boot application with web UI
+   - Displays authentication information received from gateway
+   - Access via gateway: `http://localhost:8080/api/`
+
+2. **Legacy Test App** (Port 8082)
+   - Legacy-style Spring application
+   - Demonstrates HttpServletRequest header reading
+   - Access via gateway: `http://localhost:8080/legacy/`
+
+To run the test applications:
+
+```bash
+cd test-apps
+
+# Build both apps
+cd spring-boot-app && mvn clean package && cd ..
+cd legacy-app && mvn clean package && cd ..
+
+# Start both apps
+./start-test-apps.sh
+
+# Stop both apps
+./stop-test-apps.sh
+```
+
+See [test-apps/README.md](test-apps/README.md) for detailed instructions.
+
 ## Security Considerations
 
 - CSRF is disabled for proxy scenarios (consider enabling for production)

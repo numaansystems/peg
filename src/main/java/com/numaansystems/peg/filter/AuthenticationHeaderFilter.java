@@ -33,20 +33,20 @@ public class AuthenticationHeaderFilter extends AbstractGatewayFilterFactory<Aut
                         if (principal instanceof OidcUser) {
                             OidcUser oidcUser = (OidcUser) principal;
                             
-                            // Add user information headers
-                            exchange.getRequest().mutate()
+                            // Build mutated request with user information headers
+                            var requestBuilder = exchange.getRequest().mutate()
                                     .header("X-Auth-User-Name", oidcUser.getName())
                                     .header("X-Auth-User-Email", oidcUser.getEmail())
-                                    .header("X-Auth-User-Sub", oidcUser.getSubject())
-                                    .build();
+                                    .header("X-Auth-User-Sub", oidcUser.getSubject());
                             
                             // Optionally add the ID token for backend validation
                             if (config.isIncludeIdToken()) {
                                 String idToken = oidcUser.getIdToken().getTokenValue();
-                                exchange.getRequest().mutate()
-                                        .header("X-Auth-ID-Token", idToken)
-                                        .build();
+                                requestBuilder.header("X-Auth-ID-Token", idToken);
                             }
+                            
+                            // Create new exchange with mutated request
+                            return chain.filter(exchange.mutate().request(requestBuilder.build()).build());
                         }
                     }
                     return chain.filter(exchange);

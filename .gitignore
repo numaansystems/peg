@@ -50,3 +50,6 @@ Thumbs.db
 # Environment variables
 .env
 
+# Test apps
+test-apps/**/*.pid
+
