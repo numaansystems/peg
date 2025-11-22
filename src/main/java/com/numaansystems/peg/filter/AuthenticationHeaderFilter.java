@@ -34,15 +34,30 @@ public class AuthenticationHeaderFilter extends AbstractGatewayFilterFactory<Aut
                             OidcUser oidcUser = (OidcUser) principal;
                             
                             // Build mutated request with user information headers
-                            var requestBuilder = exchange.getRequest().mutate()
-                                    .header("X-Auth-User-Name", oidcUser.getName())
-                                    .header("X-Auth-User-Email", oidcUser.getEmail())
-                                    .header("X-Auth-User-Sub", oidcUser.getSubject());
+                            var requestBuilder = exchange.getRequest().mutate();
+                            
+                            // Add headers with null checks
+                            String userName = oidcUser.getName();
+                            if (userName != null) {
+                                requestBuilder.header("X-Auth-User-Name", userName);
+                            }
+                            
+                            String userEmail = oidcUser.getEmail();
+                            if (userEmail != null) {
+                                requestBuilder.header("X-Auth-User-Email", userEmail);
+                            }
+                            
+                            String userSub = oidcUser.getSubject();
+                            if (userSub != null) {
+                                requestBuilder.header("X-Auth-User-Sub", userSub);
+                            }
                             
                             // Optionally add the ID token for backend validation
-                            if (config.isIncludeIdToken()) {
+                            if (config.isIncludeIdToken() && oidcUser.getIdToken() != null) {
                                 String idToken = oidcUser.getIdToken().getTokenValue();
-                                requestBuilder.header("X-Auth-ID-Token", idToken);
+                                if (idToken != null) {
+                                    requestBuilder.header("X-Auth-ID-Token", idToken);
+                                }
                             }
                             
                             // Create new exchange with mutated request

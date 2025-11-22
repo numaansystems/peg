@@ -14,7 +14,11 @@ spring:
           client-secret: ${AZURE_CLIENT_SECRET:your-client-secret}
         authorization-clients:
           graph:
-            scopes: openid, profile, email, User.Read
+            scopes:
+              - openid
+              - profile
+              - email
+              - User.Read
     
     # Gateway routes configuration
     gateway:
@@ -50,10 +54,13 @@ spring:
             - AuthenticationHeaderFilter
       
       # Global CORS configuration
+      # NOTE: For production, replace with specific origins
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns: "*"
+            allowedOriginPatterns:
+              - "http://localhost:[*]"
+              - "https://yourdomain.com"
             allowedMethods:
               - GET
               - POST
@@ -71,7 +78,10 @@ spring:
           azure:
             client-id: ${AZURE_CLIENT_ID:your-client-id}
             client-secret: ${AZURE_CLIENT_SECRET:your-client-secret}
-            scope: openid, profile, email
+            scope:
+              - openid
+              - profile
+              - email
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
         provider:
           azure:
