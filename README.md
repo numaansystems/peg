@@ -213,7 +213,7 @@ For production deployments with **multiple gateway instances** (Kubernetes, load
 
 Redis is the recommended option for most deployments due to its performance and simplicity.
 
-1. Uncomment Redis dependencies in `pom.xml` (lines 81-90):
+1. Uncomment Redis dependencies in `pom.xml` (lines 77-87):
 ```xml
 <dependency>
     <groupId>org.springframework.boot</groupId>
@@ -243,7 +243,7 @@ spring:
 
 If your organization already has Oracle database infrastructure, you can use JDBC session storage.
 
-1. Uncomment JDBC dependencies in `pom.xml` (lines 93-107):
+1. Uncomment JDBC dependencies in `pom.xml` (lines 89-109):
 ```xml
 <dependency>
     <groupId>org.springframework.session</groupId>

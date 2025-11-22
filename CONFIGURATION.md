@@ -229,7 +229,7 @@ Redis is recommended for most use cases due to its high performance and low late
 
 **Configuration:**
 
-1. Uncomment Redis dependencies in `pom.xml` (lines 81-90)
+1. Uncomment Redis dependencies in `pom.xml` (lines 77-87)
 2. Configure Redis connection:
 
 ```yaml
@@ -263,7 +263,7 @@ Use JDBC sessions if your organization already has Oracle database infrastructur
 
 **Configuration:**
 
-1. Uncomment JDBC dependencies in `pom.xml` (lines 93-107):
+1. Uncomment JDBC dependencies in `pom.xml` (lines 89-109):
    - `spring-session-jdbc`
    - `ojdbc11` (Oracle JDBC driver)
    - `HikariCP` (connection pooling)
