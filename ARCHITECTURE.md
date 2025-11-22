@@ -196,16 +196,198 @@ spring:
     port: 6379
 ```
 
+## JDBC Session Store (Alternative to Redis)
+
+### Using Oracle Database for Session Storage
+
+While Redis is recommended for most scenarios, **JDBC session storage with Oracle database** is a viable alternative, especially if:
+- Your organization already has Oracle database infrastructure
+- Database operations are more familiar to your team
+- You need persistent session storage with existing backup/recovery procedures
+- Compliance requirements mandate database-backed storage
+
+### JDBC Configuration
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@<oracle-host>:1521/<service-name>
+    username: ${ORACLE_USERNAME}
+    password: ${ORACLE_PASSWORD}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+      connection-timeout: 30000
+  session:
+    store-type: jdbc
+    timeout: 30m
+    jdbc:
+      initialize-schema: always  # Auto-creates session tables
+```
+
+### How JDBC Sessions Work
+
+```
+┌─────────┐         ┌──────────────────┐         ┌─────────────┐
+│         │────1───>│  Gateway Pod 1   │────────>│             │
+│         │         │                  │         │             │
+│ Client  │         └──────────┬───────┘         │  Backend    │
+│         │         ┌──────────┴───────┐         │  Services   │
+│         │         │  Oracle Database │         │             │
+│         │         │  (SPRING_SESSION)│         │             │
+│         │────2───>│  Gateway Pod 2   │────────>│             │
+│         │         │                  │         │             │
+└─────────┘         └──────────────────┘         └─────────────┘
+                    ✅ Sessions shared via database!
+```
+
+### Database Schema
+
+Spring Session automatically creates these tables in Oracle:
+
+```sql
+-- Main session table
+CREATE TABLE SPRING_SESSION (
+  PRIMARY_ID CHAR(36) NOT NULL,
+  SESSION_ID CHAR(36) NOT NULL,
+  CREATION_TIME NUMBER(19) NOT NULL,
+  LAST_ACCESS_TIME NUMBER(19) NOT NULL,
+  MAX_INACTIVE_INTERVAL NUMBER(10) NOT NULL,
+  EXPIRY_TIME NUMBER(19) NOT NULL,
+  PRINCIPAL_NAME VARCHAR2(100),
+  CONSTRAINT SPRING_SESSION_PK PRIMARY KEY (PRIMARY_ID)
+);
+
+-- Session attributes table (stores OAuth2 tokens, user info)
+CREATE TABLE SPRING_SESSION_ATTRIBUTES (
+  SESSION_PRIMARY_ID CHAR(36) NOT NULL,
+  ATTRIBUTE_NAME VARCHAR2(200) NOT NULL,
+  ATTRIBUTE_BYTES BLOB NOT NULL,
+  CONSTRAINT SPRING_SESSION_ATTRIBUTES_PK PRIMARY KEY (SESSION_PRIMARY_ID, ATTRIBUTE_NAME),
+  CONSTRAINT SPRING_SESSION_ATTRIBUTES_FK FOREIGN KEY (SESSION_PRIMARY_ID) 
+    REFERENCES SPRING_SESSION(PRIMARY_ID) ON DELETE CASCADE
+);
+
+-- Performance indexes
+CREATE INDEX SPRING_SESSION_IX1 ON SPRING_SESSION (SESSION_ID);
+CREATE INDEX SPRING_SESSION_IX2 ON SPRING_SESSION (EXPIRY_TIME);
+CREATE INDEX SPRING_SESSION_IX3 ON SPRING_SESSION (PRINCIPAL_NAME);
+```
+
+### Redis vs JDBC Comparison
+
+| Feature | Redis | JDBC (Oracle) |
+|---------|-------|---------------|
+| **Performance** | ⭐⭐⭐⭐⭐ Sub-millisecond | ⭐⭐⭐ 5-20ms per operation |
+| **Latency** | <1ms typical | 5-20ms typical |
+| **Throughput** | Very high (100K+ ops/sec) | Moderate (depends on DB sizing) |
+| **Setup Complexity** | Low (standalone service) | Medium (requires DB setup) |
+| **Operational Knowledge** | Redis-specific | Standard database ops |
+| **Infrastructure Cost** | Dedicated Redis cluster | Use existing DB |
+| **Persistence** | Optional (can be in-memory only) | Always persistent |
+| **Backup/Recovery** | Redis-specific tools | Standard DB backup tools |
+| **Session Storage** | In-memory with optional disk | Always on disk |
+| **Scalability** | Excellent (Redis Cluster) | Good (limited by DB) |
+| **Connection Pooling** | Lettuce (built-in) | HikariCP (requires tuning) |
+| **Failure Recovery** | Fast (in-memory) | Slower (disk I/O) |
+| **Best For** | High-traffic, new deployments | Existing Oracle infrastructure |
+
+### When to Use JDBC Instead of Redis
+
+**Choose JDBC if:**
+1. ✅ You already have Oracle database infrastructure
+2. ✅ Your team is more familiar with database operations than Redis
+3. ✅ Compliance requires all data in corporate database
+4. ✅ You need sessions to survive complete system outages with database backups
+5. ✅ Budget constraints prevent additional Redis infrastructure
+
+**Choose Redis if:**
+1. ✅ You need maximum performance and lowest latency
+2. ✅ You're deploying a new system (no existing DB)
+3. ✅ High traffic is expected (>1000 requests/sec)
+4. ✅ You want session storage decoupled from application database
+5. ✅ Your team has Redis operational expertise
+
+### JDBC Performance Tuning
+
+To get optimal performance with JDBC sessions:
+
+```yaml
+spring:
+  datasource:
+    hikari:
+      # Connection pool sizing (adjust based on load)
+      maximum-pool-size: 20            # Max connections
+      minimum-idle: 10                 # Min idle connections
+      
+      # Connection timeouts
+      connection-timeout: 30000        # 30 seconds
+      idle-timeout: 600000             # 10 minutes
+      max-lifetime: 1800000            # 30 minutes
+      
+      # Performance tuning
+      leak-detection-threshold: 60000  # Detect connection leaks
+      
+  session:
+    jdbc:
+      # Cleanup expired sessions every 15 minutes
+      cleanup-cron: "0 */15 * * * *"
+      
+      # Session table names (optional customization)
+      table-name: SPRING_SESSION
+```
+
+**Database-Level Tuning:**
+- Ensure proper indexing on `SESSION_ID`, `EXPIRY_TIME`, and `PRINCIPAL_NAME`
+- Configure adequate database connection limits
+- Monitor connection pool usage and adjust sizing
+- Regular cleanup of expired sessions (handled by Spring Session)
+- Consider database connection pooling at the database level (e.g., Oracle RAC)
+
+### JDBC Session Security
+
+Similar to Redis, secure your JDBC session storage:
+
+1. **Encrypted Database Connections:**
+   ```yaml
+   spring:
+     datasource:
+       url: jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(HOST=<host>)(PORT=2484))(CONNECT_DATA=(SERVICE_NAME=<service>)))
+   ```
+
+2. **Use Secrets Management:**
+   - Store database credentials in Azure Key Vault, AWS Secrets Manager, or similar
+   - Never hardcode credentials
+
+3. **Network Isolation:**
+   - Keep Oracle database in private VPC/subnet
+   - Use security groups/firewall rules
+   - Restrict access to gateway pods only
+
+4. **Session Timeout:**
+   ```yaml
+   spring:
+     session:
+       timeout: 30m  # Shorter timeout = better security
+   ```
+
+5. **Audit Logging:**
+   - Enable Oracle audit logging for session table access
+   - Monitor for unusual session patterns
+
 ## Security Considerations
 
-### Session Data in Redis
+### Session Data Storage
 
-The gateway stores these items in Redis sessions:
+The gateway stores these items in session storage (Redis or JDBC):
 - OAuth2 authentication tokens (access, refresh, ID tokens)
 - User principal (email, name, sub)
 - Azure AD OAuth2 client state
 
 ### Security Best Practices
+
+#### For Redis:
 
 1. **Enable Redis Authentication:**
    ```yaml
@@ -226,33 +408,34 @@ The gateway stores these items in Redis sessions:
    - Use security groups to restrict access
    - Only gateway pods should reach Redis
 
-4. **Configure Session Timeout:**
+#### For JDBC (Oracle):
+
+1. **Encrypted Database Connections:**
+   Use Oracle wallet or TCPS protocol
+
+2. **Credential Management:**
+   Store database credentials securely (vault services)
+
+3. **Database Access Control:**
+   - Dedicated database user with minimal privileges
+   - Grant only necessary permissions on session tables
+
+4. **All Session Stores:**
+
+   **Configure Session Timeout:**
    ```yaml
    spring:
      session:
        timeout: 30m  # Balance security vs UX
    ```
 
-5. **Regular Token Rotation:**
+   **Regular Token Rotation:**
    - Spring Security handles refresh token rotation
-   - Redis ensures tokens are accessible for rotation
+   - Session store ensures tokens are accessible for rotation
 
-## Alternative Approaches (Not Used)
+## Alternative Approaches
 
 ### Why Not Use Other Session Stores?
-
-#### JDBC Session Store
-```yaml
-# Not recommended for gateways
-spring:
-  session:
-    store-type: jdbc
-```
-**Why not:**
-- Higher latency than Redis
-- Requires database schema management
-- Less scalable for high-traffic scenarios
-- Overkill for session storage only
 
 #### Hazelcast
 ```yaml
@@ -275,7 +458,11 @@ spring:
 
 ## Monitoring Redis
 
-### Key Metrics to Monitor
+## Monitoring
+
+### Monitoring Redis Sessions
+
+**Key Metrics to Monitor:**
 
 1. **Connection Pool:**
    - Active connections
@@ -292,7 +479,7 @@ spring:
    - Eviction rate
    - Command latency
 
-### Example Prometheus Queries
+**Example Prometheus Queries:**
 
 ```promql
 # Active sessions
@@ -305,32 +492,110 @@ rate(redis_sessions_created_total[5m])
 redis_memory_used_bytes
 ```
 
+### Monitoring JDBC Sessions
+
+**Key Metrics to Monitor:**
+
+1. **Database Connection Pool:**
+   - Active connections
+   - Idle connections
+   - Connection wait time
+   - Connection acquisition time
+
+2. **Session Table Statistics:**
+   - Row count in SPRING_SESSION table
+   - Query performance on session lookups
+   - Session cleanup job execution time
+
+3. **Database Health:**
+   - CPU usage during session operations
+   - I/O wait time
+   - Table space usage
+
+**Example SQL Queries:**
+
+```sql
+-- Count active sessions
+SELECT COUNT(*) FROM SPRING_SESSION 
+WHERE EXPIRY_TIME > (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000);
+
+-- Sessions by user
+SELECT PRINCIPAL_NAME, COUNT(*) 
+FROM SPRING_SESSION 
+GROUP BY PRINCIPAL_NAME;
+
+-- Old sessions that need cleanup
+SELECT COUNT(*) FROM SPRING_SESSION 
+WHERE EXPIRY_TIME < (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000);
+```
+
 ## Troubleshooting
 
-### "Session expired" errors after deployment
+### Redis-Specific Issues
+
+**"Session expired" errors after deployment**
 - **Cause**: Redis not configured or unreachable
 - **Solution**: Verify Redis connection and configuration
 
-### Users forced to re-login frequently
+**Users forced to re-login frequently**
 - **Cause**: In-memory sessions with multiple pods
 - **Solution**: Enable Redis session store
 
-### Slow authentication
+**Slow authentication**
 - **Cause**: Redis network latency
 - **Solution**: Use Redis in same region/VPC as gateway
 
-### Redis connection failures
+**Redis connection failures**
 - **Cause**: Network isolation, wrong credentials
 - **Solution**: Check Redis host, port, password, and network rules
 
+### JDBC-Specific Issues
+
+**"Could not open JDBC Connection for transaction"**
+- **Cause**: Database unreachable or connection pool exhausted
+- **Solution**: Check database connectivity, increase pool size
+
+**Slow session lookups**
+- **Cause**: Missing indexes on session tables
+- **Solution**: Verify indexes exist on SESSION_ID, EXPIRY_TIME columns
+
+**Connection pool exhaustion**
+- **Cause**: Too many concurrent sessions, small pool size
+- **Solution**: Increase HikariCP maximum-pool-size
+
+**Sessions not cleaning up**
+- **Cause**: Cleanup cron job not running
+- **Solution**: Check `spring.session.jdbc.cleanup-cron` configuration
+
+**Oracle errors during session creation**
+- **Cause**: Insufficient tablespace or permissions
+- **Solution**: Grant proper permissions, increase tablespace
+
 ## Summary
 
-| Deployment Type | Session Store | Redis Needed? |
-|-----------------|--------------|---------------|
-| Local Development | In-Memory | ❌ No |
-| Single Instance | In-Memory | ❌ No |
-| Kubernetes (replicas > 1) | Redis | ✅ Yes |
-| Production Load-Balanced | Redis | ✅ Yes |
-| High Availability | Redis | ✅ Yes |
+| Deployment Type | Session Store Options | Recommendation |
+|-----------------|----------------------|----------------|
+| Local Development | In-Memory | ✅ In-Memory (no config needed) |
+| Single Instance | In-Memory | ✅ In-Memory (no config needed) |
+| Kubernetes (replicas > 1) | Redis or JDBC | ✅ Redis (performance) or JDBC (existing DB) |
+| Production Load-Balanced | Redis or JDBC | ✅ Redis (recommended) or JDBC (if Oracle exists) |
+| High Availability | Redis or JDBC | ✅ Redis (best performance) |
+| Existing Oracle Infrastructure | JDBC | ✅ JDBC (leverage existing DB) |
 
-**Bottom Line**: Redis is essential for any production deployment where you need multiple gateway instances for reliability, scalability, or availability. It enables seamless session sharing across all gateway pods, providing a consistent authentication experience for users.
+### Decision Matrix
+
+**Choose Redis if:**
+- ✅ You need maximum performance (<1ms latency)
+- ✅ High traffic expected (>1000 req/sec)
+- ✅ New deployment without existing database constraints
+- ✅ Team has Redis operational experience
+- ✅ Session data can be ephemeral (doesn't need to survive all failures)
+
+**Choose JDBC (Oracle) if:**
+- ✅ Organization already has Oracle infrastructure
+- ✅ DBAs prefer database-backed storage
+- ✅ Compliance requires all data in corporate database
+- ✅ Need sessions in backups for disaster recovery
+- ✅ Lower traffic scenarios (<500 req/sec)
+
+**Bottom Line**: Both Redis and JDBC enable distributed session management for multi-instance deployments. Redis offers better performance and is recommended for most scenarios. JDBC with Oracle is a valid choice when leveraging existing database infrastructure or when database persistence is required by policy.

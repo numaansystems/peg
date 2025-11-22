@@ -54,14 +54,14 @@
             <artifactId>spring-session-core</artifactId>
         </dependency>
 
-        <!-- Redis for distributed session management
+        <!-- Distributed session management options (choose one)
              REQUIRED for production deployments with multiple gateway instances
              
              Why needed:
              - OAuth2 authentication requires stateful sessions
              - Multiple gateway instances (K8s, load-balanced) need shared session store
-             - Without Redis: Users re-authenticate on every pod switch
-             - With Redis: Sessions shared across all gateway pods
+             - Without shared store: Users re-authenticate on every pod switch
+             - With shared store: Sessions accessible across all gateway pods
              
              When to enable:
              - ✅ Kubernetes deployments with replicas > 1
@@ -70,9 +70,10 @@
              - ❌ Single-instance deployments (uses in-memory sessions)
              - ❌ Local development (optional)
              
-             To enable: Remove <optional>true</optional> and configure Redis in application.yml
              See ARCHITECTURE.md for detailed explanation
         -->
+        
+        <!-- Option 1: Redis (Recommended for most use cases) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
@@ -82,6 +83,28 @@
         <dependency>
             <groupId>org.springframework.session</groupId>
             <artifactId>spring-session-data-redis</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
+        <!-- Option 2: JDBC (For database-backed session storage) -->
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-jdbc</artifactId>
+            <optional>true</optional>
+        </dependency>
+        
+        <!-- Oracle JDBC Driver (Required when using JDBC sessions with Oracle) -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc11</artifactId>
+            <version>23.3.0.23.09</version>
+            <optional>true</optional>
+        </dependency>
+        
+        <!-- HikariCP for connection pooling (recommended with JDBC sessions) -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
             <optional>true</optional>
         </dependency>
 

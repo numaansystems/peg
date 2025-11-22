@@ -205,11 +205,15 @@ The gateway maintains user authentication state through sessions. By default, se
 
 #### Production: Multi-Instance Deployments
 
-For production deployments with **multiple gateway instances** (Kubernetes, load-balanced environments), you **must** enable Redis session management to share sessions across all instances. Without Redis, users experience constant re-authentication when their requests hit different gateway pods.
+For production deployments with **multiple gateway instances** (Kubernetes, load-balanced environments), you **must** enable a distributed session store to share sessions across all instances. Without a shared session store, users experience constant re-authentication when their requests hit different gateway pods.
 
-**Configure Redis:**
+**Two options are available:**
 
-1. Uncomment Redis dependencies in `pom.xml` (lines 76-86):
+##### Option 1: Redis (Recommended)
+
+Redis is the recommended option for most deployments due to its performance and simplicity.
+
+1. Uncomment Redis dependencies in `pom.xml` (lines 81-90):
 ```xml
 <dependency>
     <groupId>org.springframework.boot</groupId>
@@ -235,7 +239,48 @@ spring:
 
 3. Deploy Redis (or use managed services like Azure Cache for Redis, AWS ElastiCache)
 
-**See [ARCHITECTURE.md](ARCHITECTURE.md#session-management-architecture) for detailed explanation of distributed session management.**
+##### Option 2: JDBC with Oracle Database
+
+If your organization already has Oracle database infrastructure, you can use JDBC session storage.
+
+1. Uncomment JDBC dependencies in `pom.xml` (lines 93-107):
+```xml
+<dependency>
+    <groupId>org.springframework.session</groupId>
+    <artifactId>spring-session-jdbc</artifactId>
+</dependency>
+<dependency>
+    <groupId>com.oracle.database.jdbc</groupId>
+    <artifactId>ojdbc11</artifactId>
+    <version>23.3.0.23.09</version>
+</dependency>
+<dependency>
+    <groupId>com.zaxxer</groupId>
+    <artifactId>HikariCP</artifactId>
+</dependency>
+```
+
+2. Configure Oracle database connection in `application.yml`:
+```yaml
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@<oracle-host>:1521/<service-name>
+    username: ${ORACLE_USERNAME}
+    password: ${ORACLE_PASSWORD}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+  session:
+    store-type: jdbc
+    timeout: 30m
+    jdbc:
+      initialize-schema: always  # Creates session tables automatically
+```
+
+3. Spring Session will automatically create the required tables (`SPRING_SESSION` and `SPRING_SESSION_ATTRIBUTES`)
+
+**See [ARCHITECTURE.md](ARCHITECTURE.md#session-management-architecture) for detailed explanation and comparison of session store options.**
 
 ## Troubleshooting
 
