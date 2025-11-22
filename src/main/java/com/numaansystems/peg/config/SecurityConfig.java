@@ -28,7 +28,7 @@ public class SecurityConfig {
         
         http
             .authorizeExchange(exchanges -> exchanges
-                .pathMatchers("/actuator/health", "/actuator/info").permitAll()
+                .pathMatchers("/gateway/actuator/health", "/gateway/actuator/info").permitAll()
                 .anyExchange().authenticated()
             )
             .oauth2Login(oauth2 -> {
@@ -55,7 +55,7 @@ public class SecurityConfig {
             ReactiveClientRegistrationRepository clientRegistrationRepository) {
         OidcClientInitiatedServerLogoutSuccessHandler successHandler =
                 new OidcClientInitiatedServerLogoutSuccessHandler(clientRegistrationRepository);
-        successHandler.setPostLogoutRedirectUri("{baseUrl}");
+        successHandler.setPostLogoutRedirectUri("{baseUrl}/gateway");
         return successHandler;
     }
 }

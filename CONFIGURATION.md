@@ -39,8 +39,8 @@ This guide provides detailed information on configuring the PEG Gateway for your
 
 1. Navigate to **Authentication**
 2. Under **Platform configurations**, add redirect URIs:
-   - `https://your-gateway-domain.com/login/oauth2/code/azure`
-   - `http://localhost:8080/login/oauth2/code/azure` (for local development)
+   - `https://your-gateway-domain.com/gateway/login/oauth2/code/azure`
+   - `http://localhost:8080/gateway/login/oauth2/code/azure` (for local development)
 3. Under **Implicit grant and hybrid flows**, enable:
    - ID tokens (used for implicit and hybrid flows)
 4. Click **Save**

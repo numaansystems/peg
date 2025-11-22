@@ -10,7 +10,7 @@ A modern Spring Boot application that demonstrates:
 - Displaying user information in a web interface
 - Providing JSON API endpoints
 
-**Access via Gateway:** `http://localhost:8080/api/`
+**Access via Gateway:** `http://localhost:8080/gateway/api/`
 
 ### 2. Legacy Test App (Port 8082)
 A legacy-style Spring application that demonstrates:
@@ -18,7 +18,7 @@ A legacy-style Spring application that demonstrates:
 - No OAuth2 dependencies
 - Simple authentication delegation pattern
 
-**Access via Gateway:** `http://localhost:8080/legacy/`
+**Access via Gateway:** `http://localhost:8080/gateway/legacy/`
 
 ## Building and Running
 
@@ -78,8 +78,8 @@ To stop:
 2. **Start both test applications**
 
 3. **Access via Gateway:**
-   - Modern app: http://localhost:8080/api/
-   - Legacy app: http://localhost:8080/legacy/
+   - Modern app: http://localhost:8080/gateway/api/
+   - Legacy app: http://localhost:8080/gateway/legacy/
 
 4. **You should be:**
    - Redirected to Azure AD login

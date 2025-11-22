@@ -56,7 +56,7 @@ The gateway will start on port 8080.
 ### Scenario 1: Access via Gateway (Authenticated)
 
 **Test Modern Spring Boot App:**
-1. Open browser: http://localhost:8080/api/
+1. Open browser: http://localhost:8080/gateway/api/
 2. You'll be redirected to Azure AD login
 3. Login with your Azure AD credentials
 4. You'll be redirected back and see:
@@ -66,7 +66,7 @@ The gateway will start on port 8080.
    - Your unique user ID
 
 **Test Legacy Spring App:**
-1. Open browser: http://localhost:8080/legacy/
+1. Open browser: http://localhost:8080/gateway/legacy/
 2. Since you're already authenticated, you'll see:
    - ✓ Authenticated status
    - Your name, email, and ID
@@ -92,11 +92,11 @@ The gateway will start on port 8080.
 **Via Gateway (Authenticated):**
 ```bash
 # Get user info from Spring Boot app (JSON)
-curl http://localhost:8080/api/api/user \
+curl http://localhost:8080/gateway/api/api/user \
   -H "Cookie: SESSION=your-session-cookie"
 
 # Get user info from Legacy app (JSON)
-curl http://localhost:8080/legacy/api/user \
+curl http://localhost:8080/gateway/legacy/api/user \
   -H "Cookie: SESSION=your-session-cookie"
 ```
 
@@ -156,7 +156,7 @@ The test applications read these headers and display them.
 ┌─────────────┐
 │   Browser   │
 └──────┬──────┘
-       │ 1. Request http://localhost:8080/api/
+       │ 1. Request http://localhost:8080/gateway/api/
        ↓
 ┌─────────────────────────┐
 │   PEG Gateway :8080     │
@@ -270,7 +270,7 @@ After validating the gateway works:
 5. Should still be authenticated (session persists)
 
 ### Test Logout
-1. Navigate to http://localhost:8080/logout
+1. Navigate to http://localhost:8080/gateway/logout
 2. Should logout from Azure AD
 3. Next access should require re-authentication
 
@@ -278,7 +278,7 @@ After validating the gateway works:
 ```bash
 # Install Apache Bench if not already installed
 # Test gateway performance
-ab -n 1000 -c 10 http://localhost:8080/api/health
+ab -n 1000 -c 10 http://localhost:8080/gateway/api/health
 ```
 
 ## Security Testing
@@ -287,7 +287,7 @@ ab -n 1000 -c 10 http://localhost:8080/api/health
 Use browser developer tools:
 1. Open DevTools (F12)
 2. Go to Network tab
-3. Access http://localhost:8080/api/
+3. Access http://localhost:8080/gateway/api/
 4. Click on the request to backend
 5. Verify X-Auth-* headers are present
 

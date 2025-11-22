@@ -27,9 +27,9 @@ spring:
         - id: spring-boot-app
           uri: ${BACKEND_SPRING_BOOT_URL:http://localhost:8081}
           predicates:
-            - Path=/api/**
+            - Path=/gateway/api/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=2
             - PreserveHostHeader
             - AuthenticationHeaderFilter
         
@@ -37,9 +37,9 @@ spring:
         - id: legacy-spring-app
           uri: ${BACKEND_LEGACY_SPRING_URL:http://localhost:8082}
           predicates:
-            - Path=/legacy/**
+            - Path=/gateway/legacy/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=2
             - PreserveHostHeader
             - AuthenticationHeaderFilter
         
@@ -47,9 +47,9 @@ spring:
         - id: gwt-app
           uri: ${BACKEND_GWT_URL:http://localhost:8083}
           predicates:
-            - Path=/gwt/**
+            - Path=/gateway/gwt/**
           filters:
-            - StripPrefix=1
+            - StripPrefix=2
             - PreserveHostHeader
             - AuthenticationHeaderFilter
       
@@ -82,7 +82,7 @@ spring:
               - openid
               - profile
               - email
-            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            redirect-uri: "{baseUrl}/gateway/login/oauth2/code/{registrationId}"
         provider:
           azure:
             issuer-uri: https://login.microsoftonline.com/${AZURE_TENANT_ID:your-tenant-id}/v2.0
@@ -90,11 +90,14 @@ spring:
 # Server configuration
 server:
   port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /gateway
   
 # Actuator configuration
 management:
   endpoints:
     web:
+      base-path: /gateway/actuator
       exposure:
         include: health,info,metrics
   endpoint:

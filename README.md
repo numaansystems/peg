@@ -39,7 +39,7 @@ The gateway:
 ### Azure AD Setup
 
 1. Register an application in Azure AD
-2. Configure redirect URI: `http://localhost:8080/login/oauth2/code/azure`
+2. Configure redirect URI: `http://localhost:8080/gateway/login/oauth2/code/azure`
 3. Note the following values:
    - Tenant ID
    - Client ID
@@ -88,13 +88,13 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 
 ## API Routes
 
-The gateway provides the following routes:
+The gateway runs with the context path `/gateway` and provides the following routes:
 
 | Path | Backend | Description |
 |------|---------|-------------|
-| `/api/**` | Spring Boot App | Modern Spring Boot application |
-| `/legacy/**` | Legacy Spring App | Legacy Spring Framework application |
-| `/gwt/**` | GWT App | GWT application |
+| `/gateway/api/**` | Spring Boot App | Modern Spring Boot application |
+| `/gateway/legacy/**` | Legacy Spring App | Legacy Spring Framework application |
+| `/gateway/gwt/**` | GWT App | GWT application |
 
 All routes require authentication via Azure AD.
 
@@ -113,8 +113,8 @@ Backend applications can use these headers to identify authenticated users witho
 
 Access health endpoints:
 
-- Health: `http://localhost:8080/actuator/health`
-- Info: `http://localhost:8080/actuator/info`
+- Health: `http://localhost:8080/gateway/actuator/health`
+- Info: `http://localhost:8080/gateway/actuator/info`
 
 ## Testing
 
@@ -131,12 +131,12 @@ The repository includes two test applications to validate the gateway functional
 1. **Spring Boot Test App** (Port 8081)
    - Modern Spring Boot application with web UI
    - Displays authentication information received from gateway
-   - Access via gateway: `http://localhost:8080/api/`
+   - Access via gateway: `http://localhost:8080/gateway/api/`
 
 2. **Legacy Test App** (Port 8082)
    - Legacy-style Spring application
    - Demonstrates HttpServletRequest header reading
-   - Access via gateway: `http://localhost:8080/legacy/`
+   - Access via gateway: `http://localhost:8080/gateway/legacy/`
 
 To run the test applications:
 
