@@ -37,7 +37,12 @@ public class SecurityConfig {
             .logout(logout -> logout
                 .logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository))
             )
-            .csrf(csrf -> csrf.disable()); // Disable CSRF for simplicity in proxy scenarios
+            .csrf(csrf -> csrf.disable()); // CSRF is disabled for API gateway/proxy scenarios
+                                           // The gateway acts as a reverse proxy and doesn't maintain 
+                                           // state-changing forms. Backend services should implement
+                                           // their own CSRF protection if needed.
+                                           // Consider enabling for production if the gateway serves
+                                           // user-facing forms directly.
 
         return http.build();
     }
