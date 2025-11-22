@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # PEG Gateway
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - BACKEND_SPRING_BOOT_URL=http://spring-boot-app:8081
+      - BACKEND_LEGACY_SPRING_URL=http://legacy-spring-app:8082
+      - BACKEND_GWT_URL=http://gwt-app:8083
+      - SPRING_REDIS_HOST=redis
+      - SPRING_SESSION_STORE_TYPE=redis
+    depends_on:
+      - redis
+      - spring-boot-app
+      - legacy-spring-app
+      - gwt-app
+    networks:
+      - peg-network
+
+  # Redis for session management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - peg-network
+
+  # Example Spring Boot Backend
+  spring-boot-app:
+    image: mockserver/mockserver:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - MOCKSERVER_SERVER_PORT=8081
+    networks:
+      - peg-network
+
+  # Example Legacy Spring Backend
+  legacy-spring-app:
+    image: mockserver/mockserver:latest
+    ports:
+      - "8082:8082"
+    environment:
+      - MOCKSERVER_SERVER_PORT=8082
+    networks:
+      - peg-network
+
+  # Example GWT Backend
+  gwt-app:
+    image: mockserver/mockserver:latest
+    ports:
+      - "8083:8083"
+    environment:
+      - MOCKSERVER_SERVER_PORT=8083
+    networks:
+      - peg-network
+
+networks:
+  peg-network:
+    driver: bridge
