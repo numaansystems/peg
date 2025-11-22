@@ -211,13 +211,13 @@ Client → Load Bal ─→├─> Gateway Pod 2 ─┤─> Backend Services
 
 ### Configuring Redis Sessions
 
-1. Uncomment Redis dependencies in `pom.xml`
+1. Uncomment Redis dependencies in `pom.xml` (lines 76-86)
 2. Configure Redis connection:
 
 ```yaml
 spring:
   redis:
-    host: redis-host
+    host: <your-redis-host>  # e.g., localhost, redis.example.com, or managed service endpoint
     port: 6379
     password: ${REDIS_PASSWORD}
   session:

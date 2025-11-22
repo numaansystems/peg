@@ -209,7 +209,7 @@ For production deployments with **multiple gateway instances** (Kubernetes, load
 
 **Configure Redis:**
 
-1. Uncomment Redis dependencies in `pom.xml` (lines 58-68):
+1. Uncomment Redis dependencies in `pom.xml` (lines 76-86):
 ```xml
 <dependency>
     <groupId>org.springframework.boot</groupId>
@@ -225,7 +225,7 @@ For production deployments with **multiple gateway instances** (Kubernetes, load
 ```yaml
 spring:
   redis:
-    host: redis-host
+    host: <your-redis-host>  # e.g., localhost, redis-service, or managed Redis endpoint
     port: 6379
     password: ${REDIS_PASSWORD}  # For production
   session:
