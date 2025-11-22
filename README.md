@@ -161,7 +161,19 @@ See [test-apps/README.md](test-apps/README.md) for detailed instructions.
 - CSRF is disabled for proxy scenarios (consider enabling for production)
 - All routes require authentication except health check endpoints
 - Session cookies are used to maintain authentication state
-- Consider using Redis for distributed session management in production
+- **Redis is required for production deployments** with multiple gateway instances
+
+### Why Redis?
+
+The gateway uses **session-based OAuth2 authentication** with Azure AD. When you deploy multiple gateway instances (for high availability, load balancing, or auto-scaling), all instances must share the same session data. Without Redis, users would be forced to re-authenticate every time their request hits a different gateway instance.
+
+**Key points:**
+- ✅ Single instance (development/testing): Redis **optional** - sessions stored in memory
+- ✅ Multiple instances (production): Redis **required** - sessions shared across all instances
+- ✅ Kubernetes with replicas > 1: Redis **required**
+- ✅ Load-balanced deployments: Redis **required**
+
+For detailed explanation, see [ARCHITECTURE.md](ARCHITECTURE.md#session-management-architecture).
 
 ## Customization
 
@@ -185,19 +197,45 @@ spring:
 
 ### Session Management
 
-For production deployments with multiple gateway instances, enable Redis session management:
+#### Why Session Management Matters
 
-1. Uncomment Redis dependencies in `pom.xml`
+The gateway maintains user authentication state through sessions. By default, sessions are stored in memory, which works fine for:
+- Single gateway instance deployments
+- Development and testing environments
+
+#### Production: Multi-Instance Deployments
+
+For production deployments with **multiple gateway instances** (Kubernetes, load-balanced environments), you **must** enable Redis session management to share sessions across all instances. Without Redis, users experience constant re-authentication when their requests hit different gateway pods.
+
+**Configure Redis:**
+
+1. Uncomment Redis dependencies in `pom.xml` (lines 58-68):
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.session</groupId>
+    <artifactId>spring-session-data-redis</artifactId>
+</dependency>
+```
+
 2. Configure Redis connection in `application.yml`:
-
 ```yaml
 spring:
   redis:
-    host: localhost
+    host: redis-host
     port: 6379
+    password: ${REDIS_PASSWORD}  # For production
   session:
     store-type: redis
+    timeout: 30m
 ```
+
+3. Deploy Redis (or use managed services like Azure Cache for Redis, AWS ElastiCache)
+
+**See [ARCHITECTURE.md](ARCHITECTURE.md#session-management-architecture) for detailed explanation of distributed session management.**
 
 ## Troubleshooting
 

@@ -54,7 +54,25 @@
             <artifactId>spring-session-core</artifactId>
         </dependency>
 
-        <!-- Redis for distributed session management (optional) -->
+        <!-- Redis for distributed session management
+             REQUIRED for production deployments with multiple gateway instances
+             
+             Why needed:
+             - OAuth2 authentication requires stateful sessions
+             - Multiple gateway instances (K8s, load-balanced) need shared session store
+             - Without Redis: Users re-authenticate on every pod switch
+             - With Redis: Sessions shared across all gateway pods
+             
+             When to enable:
+             - ✅ Kubernetes deployments with replicas > 1
+             - ✅ Load-balanced production environments
+             - ✅ High-availability setups
+             - ❌ Single-instance deployments (uses in-memory sessions)
+             - ❌ Local development (optional)
+             
+             To enable: Remove <optional>true</optional> and configure Redis in application.yml
+             See ARCHITECTURE.md for detailed explanation
+        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>

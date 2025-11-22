@@ -160,16 +160,56 @@ public class UserController {
 
 ## Session Management
 
+### Understanding Session Storage
+
+The PEG Gateway uses **stateful OAuth2 authentication** with Azure AD. This means it must maintain session data containing:
+- OAuth2 tokens (access, refresh, ID tokens)
+- User authentication state
+- User claims (email, name, subject)
+
 ### In-Memory Sessions (Default)
 
-By default, sessions are stored in memory. This is suitable for:
-- Single-instance deployments
-- Development environments
-- Testing
+By default, sessions are stored in the gateway's memory. This is suitable for:
+- **Single-instance deployments** (only one gateway pod running)
+- **Development environments** (testing on localhost)
+- **Testing scenarios**
 
-### Redis Sessions (Recommended for Production)
+**When in-memory sessions work:**
+```
+Client → Single Gateway Instance → Backend Services
+         [Sessions in RAM]
+```
+All client requests hit the same gateway instance, so sessions are always available.
 
-For production deployments with multiple gateway instances:
+### Redis Sessions (Required for Production)
+
+For production deployments with **multiple gateway instances**, Redis is **required** for distributed session management.
+
+**Why Redis is necessary:**
+
+In multi-instance deployments (Kubernetes with replicas > 1, load-balanced setups), client requests can hit any gateway instance:
+
+```
+                    ┌─> Gateway Pod 1 ─┐
+Client → Load Bal ─→├─> Gateway Pod 2 ─┤─> Backend Services
+                    └─> Gateway Pod 3 ─┘
+                           ↓
+                     Redis (Shared Sessions)
+```
+
+**Without Redis:**
+- Request 1 hits Pod 1: User authenticates, session stored in Pod 1's memory
+- Request 2 hits Pod 2: Session not found, user forced to re-authenticate
+- **Result**: Constant re-authentication, poor user experience
+
+**With Redis:**
+- Request 1 hits Pod 1: User authenticates, session stored in Redis
+- Request 2 hits Pod 2: Session retrieved from Redis, user stays authenticated
+- **Result**: Seamless experience across all gateway instances
+
+**For a detailed explanation, see [ARCHITECTURE.md](ARCHITECTURE.md#session-management-architecture)**
+
+### Configuring Redis Sessions
 
 1. Uncomment Redis dependencies in `pom.xml`
 2. Configure Redis connection:

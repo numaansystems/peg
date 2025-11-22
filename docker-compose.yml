@@ -2,6 +2,8 @@ version: '3.8'
 
 services:
   # PEG Gateway
+  # This docker-compose setup demonstrates a production-like deployment
+  # with Redis enabled for distributed session management
   gateway:
     build:
       context: .
@@ -15,6 +17,8 @@ services:
       - BACKEND_SPRING_BOOT_URL=http://spring-boot-app:8081
       - BACKEND_LEGACY_SPRING_URL=http://legacy-spring-app:8082
       - BACKEND_GWT_URL=http://gwt-app:8083
+      # Redis configuration for distributed sessions
+      # Required because we could scale gateway to multiple instances
       - SPRING_REDIS_HOST=redis
       - SPRING_SESSION_STORE_TYPE=redis
     depends_on:
@@ -25,7 +29,10 @@ services:
     networks:
       - peg-network
 
-  # Redis for session management
+  # Redis for distributed session management
+  # Why needed: Allows multiple gateway instances to share OAuth2 session data
+  # Without Redis: Users would re-authenticate when hitting different gateway instances
+  # See ARCHITECTURE.md for detailed explanation
   redis:
     image: redis:7-alpine
     ports:
