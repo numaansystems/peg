@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Legacy Test App</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+        }
+        .container {
+            background-color: #34495e;
+            padding: 30px;
+            border-radius: 8px;
+            border: 2px solid #95a5a6;
+        }
+        h1 {
+            color: #f39c12;
+            border-bottom: 3px solid #f39c12;
+            padding-bottom: 10px;
+        }
+        .info-section {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #2c3e50;
+            border-radius: 5px;
+            border: 1px solid #7f8c8d;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #7f8c8d;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: bold;
+            color: #bdc3c7;
+        }
+        .value {
+            color: #2ecc71;
+            font-family: 'Courier New', monospace;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #f39c12;
+            color: #2c3e50;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .success {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        .warning {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        code {
+            background-color: #1a252f;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #3498db;
+        }
+        h2 {
+            color: #f39c12;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <span th:text="${appName}">Application Name</span>
+            <span class="badge" th:text="'Port: ' + ${appPort}">Port</span>
+        </h1>
+        
+        <div class="info-section">
+            <h2>Authentication Status</h2>
+            <div class="info-row">
+                <span class="label">Status:</span>
+                <span th:if="${userName != 'Not authenticated'}" class="value success">✓ Authenticated via Gateway</span>
+                <span th:if="${userName == 'Not authenticated'}" class="value warning">✗ Not Authenticated</span>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>User Information</h2>
+            <p><em>This legacy application receives authentication from HTTP headers</em></p>
+            
+            <div class="info-row">
+                <span class="label">User Name:</span>
+                <span class="value" th:text="${userName}">N/A</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">User Email:</span>
+                <span class="value" th:text="${userEmail}">N/A</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="label">User Subject (ID):</span>
+                <span class="value" th:text="${userSub}">N/A</span>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>Legacy Application Pattern</h2>
+            <ol>
+                <li>Uses traditional HttpServletRequest to read headers</li>
+                <li>No dependency on OAuth2 or Spring Security</li>
+                <li>Simple header-based authentication delegation</li>
+                <li>Compatible with older Spring Framework versions</li>
+            </ol>
+        </div>
+        
+        <div class="info-section">
+            <h2>API Endpoints</h2>
+            <ul>
+                <li><code>GET /</code> - This page (HTML)</li>
+                <li><code>GET /api/user</code> - User info (JSON)</li>
+                <li><code>GET /health</code> - Health check (JSON)</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
