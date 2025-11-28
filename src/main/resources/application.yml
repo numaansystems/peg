@@ -104,6 +104,15 @@ management:
     health:
       show-details: when-authorized
 
+# Gateway code exchange configuration
+# For secure back-channel code exchange between gateway and application
+gateway:
+  code-exchange:
+    # URL where the application receives the one-time code
+    app-consume-url: ${GATEWAY_CODE_EXCHANGE_APP_URL:https://app.example.org/auth/consume}
+    # Shared secret for server-to-server validation (REQUIRED in production)
+    shared-secret: ${GATEWAY_CODE_EXCHANGE_SECRET:}
+
 # Logging configuration
 logging:
   level:

@@ -19,7 +19,8 @@ public class SecurityConfig {
 
     /**
      * Configure security for the gateway.
-     * All requests require authentication except for actuator endpoints.
+     * All requests require authentication except for actuator endpoints
+     * and internal code validation endpoint.
      */
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(
@@ -29,6 +30,8 @@ public class SecurityConfig {
         http
             .authorizeExchange(exchanges -> exchanges
                 .pathMatchers("/gateway/actuator/health", "/gateway/actuator/info").permitAll()
+                // Internal endpoint uses shared secret authentication, not OAuth2
+                .pathMatchers("/internal/validate-code").permitAll()
                 .anyExchange().authenticated()
             )
             .oauth2Login(oauth2 -> {
