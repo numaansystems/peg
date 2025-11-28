@@ -160,24 +160,82 @@ public class UserController {
 
 ## Session Management
 
+### Understanding Session Storage
+
+The PEG Gateway uses **stateful OAuth2 authentication** with Azure AD. This means it must maintain session data containing:
+- OAuth2 tokens (access, refresh, ID tokens)
+- User authentication state
+- User claims (email, name, subject)
+
 ### In-Memory Sessions (Default)
 
-By default, sessions are stored in memory. This is suitable for:
-- Single-instance deployments
-- Development environments
-- Testing
+By default, sessions are stored in the gateway's memory. This is suitable for:
+- **Single-instance deployments** (only one gateway pod running)
+- **Development environments** (testing on localhost)
+- **Testing scenarios**
 
-### Redis Sessions (Recommended for Production)
+**When in-memory sessions work:**
+```
+Client → Single Gateway Instance → Backend Services
+         [Sessions in RAM]
+```
+All client requests hit the same gateway instance, so sessions are always available.
 
-For production deployments with multiple gateway instances:
+### Redis Sessions (Required for Production)
 
-1. Uncomment Redis dependencies in `pom.xml`
+For production deployments with **multiple gateway instances**, Redis is **required** for distributed session management.
+
+**Why Redis is necessary:**
+
+In multi-instance deployments (Kubernetes with replicas > 1, load-balanced setups), client requests can hit any gateway instance:
+
+```
+                    ┌─> Gateway Pod 1 ─┐
+Client → Load Bal ─→├─> Gateway Pod 2 ─┤─> Backend Services
+                    └─> Gateway Pod 3 ─┘
+                           ↓
+                     Redis (Shared Sessions)
+```
+
+**Without Redis:**
+- Request 1 hits Pod 1: User authenticates, session stored in Pod 1's memory
+- Request 2 hits Pod 2: Session not found, user forced to re-authenticate
+- **Result**: Constant re-authentication, poor user experience
+
+**With Redis:**
+- Request 1 hits Pod 1: User authenticates, session stored in Redis
+- Request 2 hits Pod 2: Session retrieved from Redis, user stays authenticated
+- **Result**: Seamless experience across all gateway instances
+
+**For a detailed explanation, see [ARCHITECTURE.md](ARCHITECTURE.md#session-management-architecture)**
+
+### Configuring Distributed Session Storage
+
+Choose one of the following options based on your infrastructure:
+
+#### Option 1: Redis Sessions (Recommended)
+
+Redis is recommended for most use cases due to its high performance and low latency.
+
+**Pros:**
+- Very fast (in-memory storage)
+- Simple setup
+- Industry standard for session caching
+- Excellent for high-traffic scenarios
+
+**Cons:**
+- Additional infrastructure component
+- Data stored in memory (requires proper capacity planning)
+
+**Configuration:**
+
+1. Uncomment Redis dependencies in `pom.xml` (lines 77-87)
 2. Configure Redis connection:
 
 ```yaml
 spring:
   redis:
-    host: redis-host
+    host: <your-redis-host>  # e.g., localhost, redis.example.com, or managed service endpoint
     port: 6379
     password: ${REDIS_PASSWORD}
   session:
@@ -186,6 +244,125 @@ spring:
 ```
 
 3. Deploy Redis or use a managed service (Azure Cache for Redis, AWS ElastiCache)
+
+#### Option 2: JDBC Sessions with Oracle Database
+
+Use JDBC sessions if your organization already has Oracle database infrastructure.
+
+**Pros:**
+- Leverages existing database infrastructure
+- Persistent storage (sessions survive database restarts)
+- Familiar operational model for DBAs
+- Works with existing backup/recovery procedures
+
+**Cons:**
+- Higher latency compared to Redis
+- Requires database maintenance
+- May need connection pool tuning
+- Additional database load
+
+**Configuration:**
+
+1. Uncomment JDBC dependencies in `pom.xml` (lines 89-109):
+   - `spring-session-jdbc`
+   - `ojdbc11` (Oracle JDBC driver)
+   - `HikariCP` (connection pooling)
+
+2. Configure Oracle database connection:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@<oracle-host>:1521/<service-name>
+    username: ${ORACLE_USERNAME}
+    password: ${ORACLE_PASSWORD}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      maximum-pool-size: 10        # Adjust based on load
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  session:
+    store-type: jdbc
+    timeout: 30m
+    jdbc:
+      initialize-schema: always    # Auto-creates session tables
+      table-name: SPRING_SESSION   # Default table name
+```
+
+3. Spring Session will automatically create these tables in Oracle:
+   - `SPRING_SESSION` - Main session data
+   - `SPRING_SESSION_ATTRIBUTES` - Session attributes
+
+**Database Schema:** The tables are created automatically, but for reference:
+
+```sql
+-- SPRING_SESSION table
+CREATE TABLE SPRING_SESSION (
+  PRIMARY_ID CHAR(36) NOT NULL,
+  SESSION_ID CHAR(36) NOT NULL,
+  CREATION_TIME NUMBER(19) NOT NULL,
+  LAST_ACCESS_TIME NUMBER(19) NOT NULL,
+  MAX_INACTIVE_INTERVAL NUMBER(10) NOT NULL,
+  EXPIRY_TIME NUMBER(19) NOT NULL,
+  PRINCIPAL_NAME VARCHAR2(100),
+  CONSTRAINT SPRING_SESSION_PK PRIMARY KEY (PRIMARY_ID)
+);
+
+-- SPRING_SESSION_ATTRIBUTES table
+CREATE TABLE SPRING_SESSION_ATTRIBUTES (
+  SESSION_PRIMARY_ID CHAR(36) NOT NULL,
+  ATTRIBUTE_NAME VARCHAR2(200) NOT NULL,
+  ATTRIBUTE_BYTES BLOB NOT NULL,
+  CONSTRAINT SPRING_SESSION_ATTRIBUTES_PK PRIMARY KEY (SESSION_PRIMARY_ID, ATTRIBUTE_NAME),
+  CONSTRAINT SPRING_SESSION_ATTRIBUTES_FK FOREIGN KEY (SESSION_PRIMARY_ID) 
+    REFERENCES SPRING_SESSION(PRIMARY_ID) ON DELETE CASCADE
+);
+
+-- Indexes for performance
+CREATE INDEX SPRING_SESSION_IX1 ON SPRING_SESSION (SESSION_ID);
+CREATE INDEX SPRING_SESSION_IX2 ON SPRING_SESSION (EXPIRY_TIME);
+CREATE INDEX SPRING_SESSION_IX3 ON SPRING_SESSION (PRINCIPAL_NAME);
+```
+
+**Performance Tuning for JDBC Sessions:**
+
+```yaml
+spring:
+  datasource:
+    hikari:
+      # Tune these based on expected concurrent users
+      maximum-pool-size: 20
+      minimum-idle: 10
+      
+      # Connection management
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      
+      # Performance
+      leak-detection-threshold: 60000
+      
+  session:
+    jdbc:
+      # Cleanup job runs every 15 minutes by default
+      cleanup-cron: "0 */15 * * * *"
+```
+
+### Choosing Between Redis and JDBC
+
+| Criteria | Redis | JDBC (Oracle) |
+|----------|-------|---------------|
+| **Performance** | ⭐⭐⭐⭐⭐ Very fast | ⭐⭐⭐ Good |
+| **Latency** | <1ms | 5-20ms |
+| **Setup Complexity** | Low | Medium |
+| **Infrastructure** | Redis cluster | Existing Oracle DB |
+| **Persistence** | Configurable | Always persistent |
+| **Operational Familiarity** | Redis ops | Standard DB ops |
+| **Best For** | New deployments, high traffic | Existing Oracle shops |
+
+**Recommendation:** Use Redis unless you have a strong reason to use JDBC (e.g., existing Oracle infrastructure, compliance requirements, DBA preference).
 
 ## CORS Configuration
 
