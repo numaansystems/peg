@@ -19,7 +19,7 @@ public class SecurityConfig {
 
     /**
      * Configure security for the gateway.
-     * All requests require authentication except for actuator endpoints.
+     * All requests require authentication except for actuator endpoints and MSAL session endpoints.
      */
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(
@@ -28,7 +28,14 @@ public class SecurityConfig {
         
         http
             .authorizeExchange(exchanges -> exchanges
+                // Public endpoints - no authentication required
                 .pathMatchers("/gateway/actuator/health", "/gateway/actuator/info").permitAll()
+                // MSAL session endpoints - allow unauthenticated access for token exchange
+                // The token validation happens inside the handler
+                .pathMatchers("/oauth/session/**").permitAll()
+                // Static JS files for MSAL integration
+                .pathMatchers("/js/**").permitAll()
+                // All other requests require authentication
                 .anyExchange().authenticated()
             )
             .oauth2Login(oauth2 -> {
