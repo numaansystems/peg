@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
  *   <li>{@link OAuthLoginServlet} at /oauth/login</li>
  *   <li>{@link OAuthCallbackServlet} at /oauth/callback</li>
  *   <li>{@link LogoutServlet} at /oauth/logout</li>
+ *   <li>{@link OAuthStatusServlet} at /oauth/status</li>
  *   <li>{@link AuthFilter} for application URLs (when enabled)</li>
  * </ul>
  * 
@@ -71,6 +72,24 @@ public class OAuthServletConfig {
         ServletRegistrationBean<LogoutServlet> registration = 
                 new ServletRegistrationBean<>(new LogoutServlet(), "/oauth/logout");
         registration.setName("oauthLogoutServlet");
+        registration.setLoadOnStartup(1);
+        return registration;
+    }
+    
+    /**
+     * Registers the status servlet.
+     * 
+     * <p>This servlet returns the current authentication status as JSON,
+     * useful for JavaScript/GWT applications to check authentication
+     * without triggering a redirect.
+     * 
+     * @return Servlet registration for /oauth/status
+     */
+    @Bean
+    public ServletRegistrationBean<OAuthStatusServlet> oauthStatusServlet() {
+        ServletRegistrationBean<OAuthStatusServlet> registration = 
+                new ServletRegistrationBean<>(new OAuthStatusServlet(), "/oauth/status");
+        registration.setName("oauthStatusServlet");
         registration.setLoadOnStartup(1);
         return registration;
     }
