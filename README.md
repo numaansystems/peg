@@ -296,6 +296,154 @@ spring:
 - Check network connectivity to backend services
 - Review gateway logs for routing errors
 
+## Servlet-Based OAuth2 Flow (for Legacy Applications)
+
+This gateway includes an alternative servlet-based OAuth2 flow designed for legacy applications (e.g., Spring 3 + GWT apps) that cannot use Spring Security. This flow uses pure servlets and filters instead of Spring Security.
+
+### When to Use
+
+Use the servlet-based OAuth2 flow when:
+- Your application cannot upgrade to Spring Security
+- You need a minimal, non-invasive authentication solution
+- You're integrating with legacy GWT or JSP-based applications
+- You want to avoid framework upgrades
+
+### Enabling Servlet-Based OAuth2
+
+1. Set the property to enable the servlet flow:
+```yaml
+peg:
+  auth:
+    servlet:
+      enabled: true
+```
+
+Or via environment variable:
+```bash
+export PEG_AUTH_SERVLET_ENABLED=true
+```
+
+2. Configure the required environment variables:
+```bash
+export AZURE_CLIENT_ID=your-client-id
+export AZURE_CLIENT_SECRET=your-client-secret
+export AZURE_TENANT_ID=your-tenant-id
+export AZURE_REDIRECT_URI=https://your-domain.com/oauth/callback
+```
+
+### Azure AD Application Registration
+
+1. Go to [Azure Portal](https://portal.azure.com) > Azure Active Directory > App registrations
+2. Click "New registration"
+3. Enter a name for your application
+4. Select the appropriate account types (usually "Accounts in this organizational directory only")
+5. Configure the redirect URI:
+   - Platform: Web
+   - URI: `https://your-domain.com/oauth/callback` (or `http://localhost:8080/oauth/callback` for development)
+6. After creation, note down:
+   - **Application (client) ID**: This is your `AZURE_CLIENT_ID`
+   - **Directory (tenant) ID**: This is your `AZURE_TENANT_ID`
+7. Go to "Certificates & secrets" and create a new client secret
+   - Note down the secret value: This is your `AZURE_CLIENT_SECRET`
+8. Go to "API permissions" and ensure these are added:
+   - `openid`
+   - `profile`
+   - `email`
+
+### Servlet OAuth2 Components
+
+The servlet-based flow includes:
+
+| Component | Path | Description |
+|-----------|------|-------------|
+| `OAuthLoginServlet` | `/oauth/login` | Initiates login, redirects to Azure AD |
+| `OAuthCallbackServlet` | `/oauth/callback` | Handles Azure AD callback, validates tokens |
+| `LogoutServlet` | `/oauth/logout` | Clears session, optionally logs out from Azure |
+| `AuthFilter` | `/*` | Protects application URLs, redirects unauthenticated requests |
+
+### GWT Popup Login Flow
+
+For GWT applications, use the included JavaScript helper for popup-based login:
+
+1. Include the auth.js script in your GWT host page:
+```html
+<script src="/js/auth.js"></script>
+```
+
+2. Trigger login from your GWT/JavaScript code:
+```javascript
+// Basic usage
+PegAuth.login(function(success) {
+    if (success) {
+        // User logged in - reload page or update UI
+        location.reload();
+    } else {
+        console.log('Login cancelled or failed');
+    }
+});
+
+// With separate callbacks
+PegAuth.login({
+    onSuccess: function() { location.reload(); },
+    onCancel: function() { console.log('Cancelled'); },
+    onError: function(error) { alert('Error: ' + error); }
+});
+```
+
+3. For logout:
+```javascript
+// Simple logout (local session only)
+PegAuth.logout();
+
+// Logout with Azure AD sign-out
+PegAuth.logout({ azureLogout: true });
+
+// Logout with custom redirect
+PegAuth.logout('/custom-page');
+```
+
+### Security Features
+
+The servlet-based OAuth2 flow implements these security measures:
+
+- **State Parameter Validation**: Prevents CSRF attacks by validating the state parameter
+- **ID Token Signature Validation**: Verifies JWT signatures using Azure AD's JWKS endpoint
+- **Claims Validation**: Validates issuer, audience, expiration, and not-before claims
+- **HttpOnly Session Cookies**: Uses the container's session management for secure cookies
+- **Secure Token Storage**: Access and refresh tokens are stored server-side in the session
+
+### Testing the Servlet OAuth2 Flow
+
+1. **Local Development with ngrok**:
+```bash
+# Start your application
+mvn spring-boot:run
+
+# In another terminal, start ngrok
+ngrok http 8080
+
+# Use the ngrok HTTPS URL for AZURE_REDIRECT_URI
+# e.g., https://abc123.ngrok.io/oauth/callback
+```
+
+2. **Manual Test Steps**:
+   - Navigate to a protected URL (e.g., `http://localhost:8080/`)
+   - You should be redirected to `/oauth/login`
+   - Azure AD login page should appear
+   - After login, you should be redirected back to the original URL
+   - Session should be created with user information
+
+3. **Verify Session**:
+```java
+// In your application code, access the authenticated user:
+TokenUtils.UserInfo user = (TokenUtils.UserInfo) 
+    request.getSession().getAttribute("authenticated_user");
+if (user != null) {
+    String email = user.getEmail();
+    String name = user.getName();
+}
+```
+
 ## License
 
 Copyright © 2024 Numaan Systems
