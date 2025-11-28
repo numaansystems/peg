@@ -10,12 +10,20 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+
 /**
  * Server-to-server endpoint for validating one-time codes.
  * 
  * This endpoint is called by the backend application to exchange
  * a one-time code for user claims. It requires a shared secret
  * for authentication.
+ * 
+ * Security considerations:
+ * - Uses constant-time comparison to prevent timing attacks
+ * - Shared secret must be configured via environment variable
+ * - Consider adding rate limiting at the infrastructure level for production
  * 
  * Endpoint: POST /internal/validate-code
  * 
@@ -108,7 +116,7 @@ public class ValidateCodeController {
     }
 
     /**
-     * Validates the Authorization header.
+     * Validates the Authorization header using constant-time comparison.
      * Expected format: "Bearer <shared-secret>"
      */
     private boolean isAuthorized(String authHeader) {
@@ -126,6 +134,20 @@ public class ValidateCodeController {
         }
         
         String token = authHeader.substring(7);
-        return sharedSecret.equals(token);
+        // Use constant-time comparison to prevent timing attacks
+        return constantTimeEquals(sharedSecret, token);
+    }
+    
+    /**
+     * Performs constant-time string comparison to prevent timing attacks.
+     * 
+     * @param expected the expected value
+     * @param actual the actual value to compare
+     * @return true if the strings are equal
+     */
+    private static boolean constantTimeEquals(String expected, String actual) {
+        byte[] expectedBytes = expected.getBytes(StandardCharsets.UTF_8);
+        byte[] actualBytes = actual.getBytes(StandardCharsets.UTF_8);
+        return MessageDigest.isEqual(expectedBytes, actualBytes);
     }
 }

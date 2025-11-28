@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * In-memory one-time code store with TTL and single-use consume semantics.
@@ -25,10 +26,12 @@ public class CodeStore {
 
     private static final int CODE_LENGTH_BYTES = 32;
     private static final Duration DEFAULT_TTL = Duration.ofMinutes(5);
+    private static final long CLEANUP_INTERVAL_MS = 60_000; // Cleanup at most once per minute
     
     private final SecureRandom secureRandom;
     private final Map<String, CodeEntry> codeStore;
     private final Duration ttl;
+    private final AtomicLong lastCleanupTime;
     
     /**
      * Represents a stored code entry with claims and expiration.
@@ -58,6 +61,7 @@ public class CodeStore {
         this.secureRandom = new SecureRandom();
         this.codeStore = new ConcurrentHashMap<>();
         this.ttl = ttl;
+        this.lastCleanupTime = new AtomicLong(0);
     }
     
     /**
@@ -69,8 +73,8 @@ public class CodeStore {
      * @return the generated code
      */
     public String generateCode(String email, String name, String sub) {
-        // Clean up expired entries periodically
-        cleanupExpired();
+        // Clean up expired entries periodically (throttled)
+        cleanupExpiredThrottled();
         
         byte[] randomBytes = new byte[CODE_LENGTH_BYTES];
         secureRandom.nextBytes(randomBytes);
@@ -109,11 +113,19 @@ public class CodeStore {
     
     /**
      * Removes expired entries from the store.
-     * Called internally during code generation.
+     * Throttled to run at most once per minute to avoid performance impact under high load.
      */
-    private void cleanupExpired() {
-        Instant now = Instant.now();
-        codeStore.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(now));
+    private void cleanupExpiredThrottled() {
+        long now = System.currentTimeMillis();
+        long lastCleanup = lastCleanupTime.get();
+        
+        if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+            // Try to update the last cleanup time atomically
+            if (lastCleanupTime.compareAndSet(lastCleanup, now)) {
+                Instant currentTime = Instant.now();
+                codeStore.entrySet().removeIf(entry -> entry.getValue().expiresAt().isBefore(currentTime));
+            }
+        }
     }
     
     /**

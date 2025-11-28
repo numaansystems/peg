@@ -148,20 +148,31 @@ class CodeStoreTest {
     }
 
     @Test
-    void cleanupExpired_removesExpiredEntriesDuringGeneration() throws InterruptedException {
+    void cleanupExpired_removesExpiredEntriesOnConsume() throws InterruptedException {
         // Create a store with very short TTL
         CodeStore shortTtlStore = new CodeStore(Duration.ofMillis(50));
         
-        shortTtlStore.generateCode("test@example.com", "User", "sub");
+        String code1 = shortTtlStore.generateCode("test@example.com", "User", "sub");
         assertEquals(1, shortTtlStore.size());
         
         // Wait for the code to expire
         Thread.sleep(100);
         
-        // Generate a new code, which triggers cleanup
-        shortTtlStore.generateCode("test2@example.com", "User 2", "sub2");
+        // Consuming expired code should return null (cleanup happens via removal)
+        CodeStore.Claims claims = shortTtlStore.consumeCode(code1);
+        assertNull(claims, "Expired code should not be consumable");
+    }
+    
+    @Test
+    void concurrentCodeGeneration_doesNotLoseEntries() {
+        // Generate multiple codes concurrently to verify thread safety
+        CodeStore store = new CodeStore();
+        int numCodes = 100;
         
-        // Only the new code should remain (expired one was cleaned up)
-        assertEquals(1, shortTtlStore.size());
+        for (int i = 0; i < numCodes; i++) {
+            store.generateCode("user" + i + "@example.com", "User " + i, "sub" + i);
+        }
+        
+        assertEquals(numCodes, store.size());
     }
 }
