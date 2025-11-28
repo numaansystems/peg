@@ -350,6 +350,19 @@
                     credentials: 'include' // Important: include cookies
                 });
 
+                // Handle non-OK responses
+                if (!response.ok) {
+                    let errorMessage = 'Session creation failed';
+                    try {
+                        const errorResult = await response.json();
+                        errorMessage = errorResult.message || errorResult.error || errorMessage;
+                    } catch (parseError) {
+                        // Non-JSON error response
+                        errorMessage = 'Server error: ' + response.status + ' ' + response.statusText;
+                    }
+                    throw new Error(errorMessage);
+                }
+
                 const result = await response.json();
                 
                 if (!result.success) {
@@ -373,6 +386,10 @@
                 method: 'POST',
                 credentials: 'include'
             });
+            if (!response.ok) {
+                console.warn('[MsalAuth] Session destroy returned error:', response.status);
+                return { success: false };
+            }
             return await response.json();
         },
 

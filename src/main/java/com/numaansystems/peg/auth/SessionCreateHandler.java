@@ -37,7 +37,22 @@ public class SessionCreateHandler {
     private final AzureJwtValidator jwtValidator;
     private final ObjectMapper objectMapper;
     
-    // In-memory session store (for production, use Redis or database)
+    /**
+     * In-memory session store.
+     * 
+     * NOTE: This in-memory storage is suitable for single-instance deployments
+     * and development/testing. For production deployments with multiple gateway
+     * instances, implement a SessionStore interface backed by Redis or database.
+     * 
+     * To migrate to Redis:
+     * 1. Create a SessionStore interface with get/put/remove methods
+     * 2. Create InMemorySessionStore (current implementation) and RedisSessionStore
+     * 3. Use @ConditionalOnProperty to select implementation based on config
+     * 
+     * The gateway already supports Redis sessions via Spring Session for OAuth2
+     * authentication. This MSAL session store could be integrated with the same
+     * Redis configuration.
+     */
     private final ConcurrentHashMap<String, SessionData> sessions = new ConcurrentHashMap<>();
 
     @Value("${server.servlet.context-path:/gateway}")

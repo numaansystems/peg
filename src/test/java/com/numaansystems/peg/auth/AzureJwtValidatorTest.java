@@ -106,4 +106,23 @@ class AzureJwtValidatorTest {
         assertNull(userInfo.getEmail());
         assertNull(userInfo.getName());
     }
+
+    @Test
+    void shouldThrowExceptionForMissingSubject() {
+        com.nimbusds.jwt.JWTClaimsSet claims = new com.nimbusds.jwt.JWTClaimsSet.Builder()
+            .claim("email", "user@example.com")
+            .build();
+        
+        assertThrows(TokenValidationException.class, () -> validator.extractUserInfo(claims));
+    }
+
+    @Test
+    void shouldThrowExceptionForBlankSubject() {
+        com.nimbusds.jwt.JWTClaimsSet claims = new com.nimbusds.jwt.JWTClaimsSet.Builder()
+            .subject("   ")
+            .claim("email", "user@example.com")
+            .build();
+        
+        assertThrows(TokenValidationException.class, () -> validator.extractUserInfo(claims));
+    }
 }

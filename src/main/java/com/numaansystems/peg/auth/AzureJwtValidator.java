@@ -172,6 +172,9 @@ public class AzureJwtValidator {
         }
         
         // Validate expiration with clock skew tolerance
+        if (claims.getExpirationTime() == null) {
+            throw new TokenValidationException("Token missing expiration time");
+        }
         Instant now = Instant.now();
         Instant expiration = claims.getExpirationTime().toInstant();
         if (now.isAfter(expiration.plus(CLOCK_SKEW))) {
@@ -191,6 +194,11 @@ public class AzureJwtValidator {
      * Extracts user information from validated claims.
      */
     public UserInfo extractUserInfo(JWTClaimsSet claims) {
+        String subject = claims.getSubject();
+        if (subject == null || subject.isBlank()) {
+            throw new TokenValidationException("Token missing subject claim");
+        }
+        
         String email = null;
         String name = null;
         
@@ -216,7 +224,7 @@ public class AzureJwtValidator {
         }
         
         return new UserInfo(
-            claims.getSubject(),
+            subject,
             email,
             name
         );
