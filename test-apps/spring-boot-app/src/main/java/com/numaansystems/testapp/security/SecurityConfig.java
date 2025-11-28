@@ -36,7 +36,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Disable CSRF for API endpoints (gateway handles CSRF protection)
+            // CSRF disabled because this is a stateless API backend accessed only through the gateway.
+            // SECURITY: The gateway is responsible for CSRF protection. This backend should NOT
+            // be directly accessible from the internet - only from the gateway (network isolation).
+            // If this backend is exposed directly, CSRF protection should be enabled.
             .csrf(csrf -> csrf.disable())
             
             // Stateless sessions - gateway manages sessions
