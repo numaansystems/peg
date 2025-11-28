@@ -5,7 +5,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -32,6 +34,10 @@ import java.util.stream.Collectors;
 public class UserAuthorityService {
 
     private final JdbcTemplate jdbcTemplate;
+    
+    // Email validation pattern
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
 
     public UserAuthorityService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -44,6 +50,11 @@ public class UserAuthorityService {
      * @return list of granted authorities for the user
      */
     public List<GrantedAuthority> getAuthoritiesForUser(String userEmail) {
+        // Validate email format to prevent injection attacks
+        if (userEmail == null || !EMAIL_PATTERN.matcher(userEmail).matches()) {
+            return Collections.emptyList();
+        }
+        
         String sql = "SELECT AUTHORITY FROM USER_AUTHORITIES WHERE USER_EMAIL = ?";
         
         List<String> authorities = jdbcTemplate.queryForList(sql, String.class, userEmail);
