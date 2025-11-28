@@ -10,6 +10,7 @@ A reverse proxy gateway application using Spring Cloud Gateway that provides cen
   - Modern Spring Boot applications
   - Legacy Spring Framework web applications
   - GWT applications
+- **MSAL.js Integration**: Client-side Azure AD authentication for SPAs and GWT apps
 - **Authentication Propagation**: Forwards user identity to backend services via custom headers
 - **Session Management**: Maintains user sessions across requests
 - **Health Monitoring**: Actuator endpoints for monitoring and health checks
@@ -27,6 +28,16 @@ The gateway:
 2. Maintains user sessions
 3. Routes requests to appropriate backend services
 4. Adds authentication headers for backend consumption
+
+### MSAL.js Integration (Optional)
+
+For legacy GWT applications or SPAs that need client-side authentication:
+
+```
+Browser (MSAL.js) → Azure AD → POST id_token → Gateway → HttpOnly Session Cookie
+```
+
+See [MSAL_INTEGRATION.md](MSAL_INTEGRATION.md) for detailed setup instructions.
 
 ## Prerequisites
 
